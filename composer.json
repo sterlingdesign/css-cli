@@ -1,0 +1,27 @@
+{
+    "name": "sterling/stack-tools",
+    "version": "1.0.0",
+    "description": "Command line wrapper for CSS Development Tools: Dart SASS, autoprefixer, and clean-css",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Sterling\\StackTools\\": "src/"
+        },
+        "files": ["src/cmnFunctions.php"]
+    },
+    "authors": [
+        {
+            "name": "Seth A. Manley",
+            "email": "samofvt@sterlingsoftware.net"
+        }
+    ],
+    "require": {
+        "php": ">=7.1",
+        "ext-mbstring": "*",
+        "ext-parallel": "*",
+        "scssphp/scssphp": "^1.8",
+        "sevenecks/ansi": "^1.0",
+        "ulrichsg/getopt-php": "^4.0"
+    }
+}
