@@ -20,7 +20,6 @@
         "php": ">=7.1",
         "ext-mbstring": "*",
         "ext-parallel": "*",
-        "scssphp/scssphp": "^1.8",
         "sevenecks/ansi": "^1.0",
         "ulrichsg/getopt-php": "^4.0"
     }

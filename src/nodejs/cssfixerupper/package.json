@@ -1,0 +1,36 @@
+{
+  "name": "cssfixerupper",
+  "version": "0.1.0",
+  "description": "CLI Development Tool For Autoprefixing and Minifying CSS files",
+  "keywords": ["css","autoprefix","minify","cli","sterling"],
+  "homepage": "https://www.sterlingsoftware.net",
+  "bugs": {
+    "email": "support@sterlingsoftware.net"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Sterling Design, LLC",
+    "email": "sales@sterlingsoftware.net",
+    "url": "https://www.sterlingsoftware.net"
+  },
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "cssfixerupper": "./index.js"
+  },
+  "private": true,
+  "dependencies": {
+    "autoprefixer": "^10.4.0",
+    "clean-css": "^5.2.2",
+    "minimist": "^1.2.5",
+    "os": "^0.1.2",
+    "picocolors": "^1.0.0",
+    "postcss": "^8.3.11"
+  },
+  "browserslist": [
+    "last 2 version",
+    "> 1%"
+  ]
+}
