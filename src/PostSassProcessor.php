@@ -95,6 +95,8 @@ static public function CallCssTool(string $filelist, bool $bPrettyPrint, bool $b
   if(strlen($opt))
     $opt = "-" . $opt;
 
+  CliInfo("List of Files to process: " . $filelist);
+
   try
     {
     $cmd = "node " . __DIR__ . "/nodejs/cssfixerupper/index.js {$opt} {$filelist}";
@@ -191,7 +193,7 @@ private static function _monitor(Channel  $channel, array $arSassDirectoryPairs,
         break;
       else if(count($arToProcess) > 0)
         {
-        $bContinue = PostSassProcessor::CallCssTool("\"" . implode('\" \"', $arToProcess) . "\"", $bPrettyPrint, $bUseMaps);
+        $bContinue = PostSassProcessor::CallCssTool("\"" . implode("\" \"", $arToProcess) . "\"", $bPrettyPrint, $bUseMaps);
         // test again to see if we should shut down
         if($bContinue && ($event = $events->poll()))
           break;
