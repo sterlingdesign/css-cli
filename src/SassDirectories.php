@@ -119,6 +119,7 @@ public function AddStackDirs(array $arStackDirs) : int
     $strRealStackTop = realpath($strStackTop);
     if(is_string($strRealStackTop) && is_dir($strRealStackTop))
       {
+      CliInfo("Scanning {$strRealStackTop} for standard sass folders...");
       $iCountAdded = $this->addStackSassPairs($strRealStackTop, true);
       if($iCountAdded <= 0)
         CliWarning("No valid sass input/output directories exist in the stack specified by \"{$strRealStackTop}\"");

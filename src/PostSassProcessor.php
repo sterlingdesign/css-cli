@@ -95,8 +95,6 @@ static public function CallCssTool(string $filelist, bool $bPrettyPrint, bool $b
   if(strlen($opt))
     $opt = "-" . $opt;
 
-  CliInfo("List of Files to process: " . $filelist);
-
   try
     {
     $cmd = "node " . __DIR__ . "/nodejs/cssfixerupper/index.js {$opt} {$filelist}";

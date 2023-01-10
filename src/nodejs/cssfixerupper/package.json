@@ -2,7 +2,13 @@
   "name": "cssfixerupper",
   "version": "0.1.0",
   "description": "CLI Development Tool For Autoprefixing and Minifying CSS files",
-  "keywords": ["css","autoprefix","minify","cli","sterling"],
+  "keywords": [
+    "css",
+    "autoprefix",
+    "minify",
+    "cli",
+    "sterling"
+  ],
   "homepage": "https://www.sterlingsoftware.net",
   "bugs": {
     "email": "support@sterlingsoftware.net"

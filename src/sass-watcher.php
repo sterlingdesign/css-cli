@@ -195,15 +195,30 @@ function buildDirectories() : ?SassDirectories
   $oSassDirs = new Sterling\StackTools\SassDirectories();
   // the AddDirectories method displays errors as they occur and returns false
   // if a command line directory doesn't exist, we will consider that a fatal error
-  if(!$oSassDirs->AddDirectories($g_Options->getOperands()))
+  $arOperands = $g_Options->getOperands();
+  if(is_array($arOperands) && count($arOperands) > 0)
     {
-    return null;
+    CliInfo("Adding " . count($arOperands) . " standalone (non-stack) directories");
+    if(!$oSassDirs->AddDirectories($arOperands))
+      {
+      return null;
+      }
     }
+  else
+    {
+    CliInfo("No Standalone (non-stack) Directories Specified");
+    }
+
   $arStackDirs = $g_Options->getOption('s');
   if(is_array($arStackDirs) && count($arStackDirs) > 0)
     {
+    CliInfo("Adding " . count($arStackDirs) . " Stack Directories");
     if(0 == $oSassDirs->AddStackDirs($arStackDirs))
       CliWarning("Stack directories were specified, but no valid sass sub folders were found");
+    }
+  else
+    {
+    CliInfo("No Stack Directories Specified");
     }
   return $oSassDirs;
 }

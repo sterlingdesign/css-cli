@@ -1,6 +1,6 @@
 {
     "name": "sterlingdesign/css-cli",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Command line wrapper for CSS Development Tools: Dart SASS, autoprefixer, and clean-css",
     "type": "library",
     "license": "MIT",
@@ -13,7 +13,7 @@
     "authors": [
         {
             "name": "Seth A. Manley",
-            "email": "samofvt@sterlingsoftware.net"
+            "email": "support@sterlingsoftware.net"
         }
     ],
     "require": {
