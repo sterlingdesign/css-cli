@@ -1,6 +1,5 @@
 {
     "name": "sterlingdesign/css-cli",
-    "version": "1.0.1",
     "description": "Command line wrapper for CSS Development Tools: Dart SASS, autoprefixer, and clean-css",
     "type": "library",
     "license": "MIT",
