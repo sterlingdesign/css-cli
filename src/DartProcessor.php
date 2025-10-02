@@ -2,14 +2,12 @@
 declare(strict_types=1);
 namespace Sterling\StackTools;
 
-use parallel\{Channel, Error, Events, Events\Event\Type, Future, Runtime};
-
-class DartProcessor extends SimpleParallelThread
+class DartProcessor extends ThreadWithUnbufferedChannel
 {
 //-------------------------------------------------------------------------------------------------
 protected function getEntryClosure(): \Closure
 {
-  return \Closure::fromCallable('static::_entry');
+  return \Closure::fromCallable([DartProcessor::class, '_entry']);
 }
 //-------------------------------------------------------------------------------------------------
 protected function getRuntimeBootstrap(): ?string
@@ -17,49 +15,40 @@ protected function getRuntimeBootstrap(): ?string
   return BOOTSTRAP_AUTOLOAD_PHP;
 }
 //-------------------------------------------------------------------------------------------------
-public function GetFutureName(): string
+private static function _entry(\parallel\Channel $channel, string $strArgs, bool $bNoSourceMaps) : int
 {
-  return "DartProcessorTask";
-}
-//-------------------------------------------------------------------------------------------------
-private static function _entry(Channel $channel, string $strArgs, bool $bNoSourceMaps) : int
-{
-  CliInfo("DartProcessor is starting...");
+  //CliInfo("DartProcessor is starting...");
   $resDartProc = null;
   $iResult = -1;
   $pipes = [];
+  //$stdin = fopen('php://stdin', 'r');
+  $stdout = fopen('php://stdout', 'w');
+  $stderr = fopen('php://stderr', 'w');
+  $arDescriptors = [
+    0 => array('pipe', 'r'), // STDIN
+    1 => $stdout, // STDOUT
+    2 => $stderr  // STDERR
+  ];
 
   try
     {
-    $cmd = \Sterling\StackTools\DartProcessor::GetDartCmd(true, true, $bNoSourceMaps) . $strArgs;
-    $resDartProc = proc_open($cmd, array(
-      0 => array('pipe', 'r'), // STDIN
-      1 => array('pipe', 'w'), // STDOUT
-      2 => array('pipe', 'w')  // STDERR
-    ), $pipes);
-    }
-  catch(\Throwable $throwable)
-    {
-    CliError($throwable->getMessage());
-    }
-
-  if(!is_resource($resDartProc))
-    {
-    CliError("Failed to start the dart child process");
-    return -1;
-    }
-
-  try
-    {
+    $arStatus = [];
     $iResult = 0;
-    $arStatus = proc_get_status($resDartProc);
-    $events = new Events();
+    $cmd = \Sterling\StackTools\DartProcessor::GetDartCmd(true, true, $bNoSourceMaps) . $strArgs;
+    $resDartProc = proc_open($cmd, $arDescriptors, $pipes);
+    if(!is_resource($resDartProc) || (($arStatus = proc_get_status($resDartProc)) === false))
+      {
+      CliError("Failed to start the sass child process");
+      return -1;
+      }
+    CliInfo("Sass Process started [pid=" . $arStatus['pid'] . "]");
+
+    $events = new \parallel\Events();
     $events->addChannel($channel);
     $events->setBlocking(false); // don't block on Events::poll()
-    while($arStatus['running'])
+
+    while($arStatus['running'] && self::_test_continue($events, $channel))
       {
-      if(DartProcessor::_test_close($events, $channel))
-        break;
       usleep(250000);
       $arStatus = proc_get_status($resDartProc);
       }
@@ -72,32 +61,22 @@ private static function _entry(Channel $channel, string $strArgs, bool $bNoSourc
 
   if($arStatus['running'])
     {
-    CliInfo("DartProcessor is ending.");
+    CliInfo("Sass Watcher process is ending.");
     // Send CTRL-C over the pipe to signal dart to terminate
     // Unfortunately, this doesn't work to stop dart either: fwrite(pipes[0], "\x03")
-    sdProcessClose($resDartProc, $pipes, true, 0);
+    //fwrite($pipes[0], "\x03");
+    //posix_kill($arStatus['pid'], SIGTERM); // doesn't work
+    sdKillProcess($resDartProc, $pipes, true);
     }
   else
     {
     $iResult = -1;
-    CliError("DartProcessor is ending because the dart child process terminated unexpectedly");
-    sdProcessClose($resDartProc, $pipes, false, 0);
+    CliError("Sass Watcher is ending because the child process terminated unexpectedly");
+    // mainly need to close the pipes to free resources
+    sdProcessClose($resDartProc, $pipes, true, 0);
     }
 
   return $iResult;
-}
-//-------------------------------------------------------------------------------------------------
-protected static function _test_close(Events $oEvents, Channel $channel) : bool
-{
-  $bClose = false;
-  if($event = $oEvents->poll())
-    {
-    if($event->type == Type::Close)
-      $bClose = true;
-    else
-      $oEvents->addChannel($channel);
-    }
-  return $bClose;
 }
 //-------------------------------------------------------------------------------------------------
 public static function GetDartCmd(bool $bWatch = true, bool $bExpanded = true, bool $bNoSourceMap = true) : string

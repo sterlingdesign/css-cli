@@ -8,15 +8,18 @@ use parallel\Runtime;
 
 abstract class SimpleParallelThread
 {
-  protected $m_oFuture = null;
-  protected $m_oRuntime = null;
-  protected $m_oChannel = null;
-  protected $m_strChannelName = "";
+  protected ?Future $m_oFuture = null;
+  protected string $m_strFutureName = '';
+  protected ?Runtime $m_oRuntime = null;
 
   abstract protected function getEntryClosure() : \Closure;
   abstract protected function getRuntimeBootstrap() : ?string;
-  abstract public function GetFutureName() : string;
 
+  //-------------------------------------------------------------------------------------------------
+  public function __construct()
+  {
+    $this->m_strFutureName = get_class($this) . '-Future-' . sdRandomString(8);
+  }
 //-------------------------------------------------------------------------------------------------
   public function __destruct()
   {
@@ -24,28 +27,17 @@ abstract class SimpleParallelThread
       $this->Stop(0);
   }
 //-------------------------------------------------------------------------------------------------
-  public function GetChannelName() : string
-  {
-    return $this->m_strChannelName;
-  }
-//-------------------------------------------------------------------------------------------------
-  protected function MakeChannel() : Channel
-  {
-    $this->m_strChannelName = get_class($this) . sdRandomString(8);
-    return Channel::make($this->m_strChannelName);
-  }
-//-------------------------------------------------------------------------------------------------
-  public function GetChannel() : ?Channel
-  {
-    return $this->m_oChannel;
-  }
-//-------------------------------------------------------------------------------------------------
   public function GetFuture() : ?Future
   {
     return $this->m_oFuture;
   }
+  //-----------------------------------------------------------------------------------------------
+  public function GetFutureName(): string
+  {
+    return $this->m_strFutureName;
+  }
 //-------------------------------------------------------------------------------------------------
-  public function Start(array $arArgs = array()) : Future
+  public function Start(array $arArgs = array()) : ?Future
   {
     if($this->IsRunning())
       {
@@ -53,21 +45,14 @@ abstract class SimpleParallelThread
       return $this->m_oFuture;
       }
 
-    $this->m_oChannel = $this->MakeChannel();
-    $arArgs = array_merge([$this->m_oChannel], $arArgs);
     $fnEntry = $this->getEntryClosure();
     $this->m_oRuntime = new Runtime($this->getRuntimeBootstrap());
     $this->m_oFuture = $this->m_oRuntime->run($fnEntry, $arArgs);
     return $this->m_oFuture;
   }
 //-------------------------------------------------------------------------------------------------
-  public function Stop(int $wait_seconds_before_kill = 2)
+  public function Stop(int $wait_seconds_before_kill = 2) : mixed
   {
-    if(is_object($this->m_oChannel))
-      $this->m_oChannel->close();
-    $this->m_oChannel = null;
-    $this->m_strChannelName = "";
-
     // wait up to $wait_seconds_before_kill for graceful exit of the running threads - 1 second = 1,000,000 microseconds
     $iSleepMicroSeconds = 10000;
     for($iWaitTime = 0; ($iWaitTime < $wait_seconds_before_kill * 1000000) && $this->IsRunning(); $iWaitTime+=$iSleepMicroSeconds)
@@ -116,6 +101,33 @@ abstract class SimpleParallelThread
   public function IsRunning() : bool
   {
     return (is_object($this->m_oFuture) && !$this->m_oFuture->done());
+  }
+  //-----------------------------------------------------------------------------------------------
+  protected static function _test_continue(\parallel\Events $oEvents, \parallel\Channel $channel) : bool
+  {
+    $bContinue = true;
+    if($oEvent = $oEvents->poll())
+      {
+      switch($oEvent->type)
+        {
+        case \parallel\Events\Event\Type::Read:
+        case \parallel\Events\Event\Type::Write:
+          {
+          $oEvents->addChannel($channel);
+          break;
+          }
+        case \parallel\Events\Event\Type::Close:
+        case \parallel\Events\Event\Type::Cancel:
+        case \parallel\Events\Event\Type::Kill:
+        case \parallel\Events\Event\Type::Error:
+        default:
+          {
+          $bContinue = false;
+          break;
+          }
+        }
+      }
+    return $bContinue;
   }
 
 }

@@ -224,13 +224,14 @@ function CliProcFailure(strFile, strReason)
 //-------------------------------------------------------------------------------------------------
 function CliProcSuccess(strFile)
 {
-  let strResult = pc.green("PROCESSED: " + strFile);
+  let strResult = pc.green("PostSass: " + strFile);
   CliProcResult(strResult);
 }
 //-------------------------------------------------------------------------------------------------
 function CliProcResult(strResult)
 {
-  console.log(strResult + pc.cyan("[" + new Date().getTime().toString() + "]"));
+  //console.log(pc.cyan("[" + new Date().getTime().toString() + "]") + strResult);
+  console.log(pc.cyan("[" + new Date().toISOString() + "]") + strResult);
 }
 //-------------------------------------------------------------------------------------------------
 function test()

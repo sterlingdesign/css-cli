@@ -1,0 +1,191 @@
+# Install steps
+
+The installation is not straightforward for two reasons: 1) in order to run the multi-threaded command line interface, a Thread Safe version of PHP is required that can support the "parallel" extention, and 2) there are also javascript (Node.js) components called by the utility
+
+The basic installation steps are:
+
+1. Install Node.js, npm
+2. Install dart sass
+3. Install ZTS version of PHP, >= 8.3
+4. Install the Parallel extention for PHP in the ZTS version's modules/ini
+5. Use the ZTS version of PHP with composer.phar to create a new project and require sterlingdesign/css-cli
+6. Install the nodejs project requirements with npm and update the caniuse database inside the sterlingdesign/css-cli project
+
+
+## 1. Install Node.js, npm, npx
+
+For all platforms and the latest releases, see https://nodejs.org/en/download
+
+On Ubuntu Linux
+
+`
+    sudo apt install nodejs -y
+    sudo apt install npm -y
+`
+
+## 2. Install dart sass
+
+You will want the command line version: see https://sass-lang.com/install/
+
+On Ubuntu, it is simply
+
+`
+    npm install -g sass
+`
+
+Once installed, you should be able to type "sass --version" from any command line or terminal window.
+
+## 3. Install Thread Safe Version of PHP
+
+You will need PHP 8.3 or later.
+
+Care should be taken not to mix the Non-Thread Safe version of PHP with the Thread Safe version.  It is not reccomended (at this time as of PHP 8.4) to run the Thread Safe version under the Apache web server.
+
+You can test any php executable in question by executing
+
+php --version
+
+The normal, Non-Thread Safe version will print (NTS) on the version information, for example
+
+"PHP 8.4.12 (cli) (built: Aug 29 2025 06:48:12) (NTS)".  
+
+The Thread Safe version needed to run the parallel extension will print (ZTS) in the version information, for example
+
+"PHP 8.4.13 (cli) (built: Oct  1 2025 13:27:44) (ZTS)"
+
+### On Windows
+
+There have generally been pre-built PHP ZTS binaries available for download from various websites.  see the parallel project page for some pointers
+
+### On Linux 
+
+You may need to build the ZTS version of PHP from source code.  
+
+There are better references than what follows here, but these are my notes.  It's not that difficult, and will give your CPU a good workout.  A typical set of commands that might get the job done are:
+
+`
+    wget http://www.php.net/distributions/php-X.Y.Z.tar.gz
+    tar zxvf php-X.Y.Z.tar.gz
+    cd php-X.Y.Z
+`
+
+Then, on Ubuntu, for example:
+
+`
+    sudo apt update
+    sudo apt install autoconf automake bison build-essential curl flex libtool libssl-dev libcurl4-openssl-dev libxml2-dev libreadline7 libreadline-dev libsqlite3-dev libzip-dev libzip4 openssl pkg-config re2c sqlite3 zlib1g-dev
+`
+
+Then
+
+`
+    ./buildconf
+    ./configure --enable-zts --prefix=$HOME/.local --program-suffix=ZTS --disable-phpdbg --enable-mbstring --with-pdo-mysql --with-xsl --with-zip --with-openssl --with-curl --enable-exif --enable-ftp
+`
+
+In this example, notice the "--prefix=$HOME/.local" configuration option will cause the generated files to NOT be installed globally: We don't want to change the NTS version of PHP normally used and that Apache needs.  Also, the "--program-suffix=ZTS" switch causes all of the generated executable scripts and binary files to have a different name.  This is an extra safeguard so the new ZTS version doesn't conflict with the other, more common, NTS version.
+
+Most likely, you will get errors running the configure script.  Install any missing development headers until the configure completees without errors.  
+
+`
+    sudo apt install libzip-dev
+    sudo apt install libxslt1-dev
+`
+
+At the time of this writting, the Oniguruma package required to build PHP with mbstring support is not available for download.  You'll probably have to build it from git source code.  see https://github.com/kkos/oniguruma
+
+Once you install all dependencies and generate configure without error, you should be able to
+
+`
+    make -j4
+    make test
+    make install
+    make clean
+`
+Note the -j4 switch allows make (and the compiler) to use more cores on your computer and will complete the build faster.  See "man make"
+
+By now you should be able to run "phpZTS --version" and verify that it works and is described as "ZTS", not "NTS".
+
+## 4. Install the Parallel extention
+
+If you downloaded the binaries for Windows, you can simply download a pre-compiled version of parallel. see https://www.php.net/manual/en/book.parallel.php for a link to pre-built binaries.
+
+The reccomended way is to use PECL or PIE tools to obtain them, but make sure you run those tools with your ZTS version of PHP so that the extention gets installed into the local/ZTS extention directory, not the global NTS PHP directory used by Apache.  For example,
+
+phpZTS /path/to/pie.phar install parallel
+
+If you compiled the ZTS version of PHP, most likely you will need to compile the parallel extention from scratch.  for the sourcecode and latest info, see https://github.com/krakjoe/parallel
+
+Once you have a binary parallel extention installed, don't forget to update the php.ini file so that PHP loads the extention.  To locate where it is located, use
+
+`
+    phpZTS --ini
+`
+
+Then, in the configuration file, add the line
+
+`
+    extension=parallel
+`
+
+
+## 5. Use the ZTS version of PHP with composer.phar to create a new project and require sterlingdesign/css-cli
+
+`
+    mkdir myCssStackTools
+    cd myCssStackTools
+    phpZTS /path/to/composer.phar init
+    phpZTS /path/to/composer.phar require sterlingdesign/css-cli
+`
+
+## 6. Install the nodejs project requirements with npm and update the caniuse database
+
+From a terminal or command window, change into the project directory created and initialized as above, then install the node packages required to run that sub-component:
+`
+    cd vendor/sterlingdesign/css-cli/src/nodejs/cssfixerupper
+    npm install
+    npx browserslist@latest --update-db
+`
+
+To test the node components, at this point you should be able to run the command
+
+`
+    node index.js -h
+`
+
+and get a Useage message for this sub-component.  It is possible to install this component globally so that it could be run from any command line as described, but it is not nessesary or reccomended at this time.
+
+## 7. Test the css-cli tool
+
+Assuming your Thread Safe version of php is on your path, and you created a directory to install the tool into as above, ~/myCssStackTools, then you can test basic operation by running
+
+`phpZTS -f ~/myCssStackTools/vendor/sterlingdesign/css-cli/src/sass-watcher.php -- --help`
+
+You should get a useage listing.
+
+To test functionality, you can use the supplied testing css:
+
+`
+    phpZTS -f "$HOME/SterlingStackTools/vendor/sterlingdesign/css-cli/src/sass-watcher.php" -- -wpm "$HOME/SterlingStackTools/vendor/sterlingdesign/css-cli/testscss":"$HOME/SterlingStackTools/vendor/sterlingdesign/css-cli/testoutcss"
+`
+
+The above command should produce the files example.css and example.css.map in the output directory. 
+
+While the command interface is running, you can also test the other commands available.  Type help and press enter for a full list.
+
+Note that the standard useage pattern is to call this utility with arguments of "source-sass-file-directory":"output-css-directory".
+
+Note also that a "Stack" directory is a special directory structure specific to the Sterling Stack which consists of:
+
+Top-Level-Dir/FrameworkCommon/sass:Top-Level-Dir/FrameworkCommon/public/style
+
+plus one or more domain and host directories which are scanned for at startup:
+
+Top-Level-Dir/domain.com/sass:Top-Level-Dir/domain.com/public/style
+Top-Level-Dir/domain.com/hosts/host.domain.com/sass:Top-Level-Dir/domain.com/hosts/host.domain.com/public/style
+
+In other words, when using the "Stack" option, one or more -s options are followed by only the Top-Level-Dir and the sass source:output directories are searched for and added automatically.  This is a custom directory structure specific to the Sterling Stack (not published or in wide use at this time).
+
+
+
+ 

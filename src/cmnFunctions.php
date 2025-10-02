@@ -167,35 +167,22 @@ function sdProcessClose($process, array &$pipes, bool $bQuite = false, float $fW
 {
   try
     {
-    $i = 0;
-    foreach($pipes as $pipe)
-      {
-      if(is_resource($pipe))
-        {
-        if(!fclose($pipe) && !$bQuite)
-          CliWarning("Failed to close process pipe " . $i);
-        }
-      $i++;
-      }
+    // normally, a process should quit when the pipes are closed
+    sdCloseProcessPipes($pipes, $bQuite);
     // after closing pipes, wait for normal termination up to $fWaitSeconds
     $arStatus = sdWaitOnProcessStop($process, $fWaitSeconds);
+    $pid = is_numeric($arStatus['pid']) ? $arStatus['pid'] : null;
 
     // A suggested work-around, posted by "v dot denegin at yahoo dot com"
     // on the php.net manual page for proc_terminate()
-    if($arStatus['running'])
+    if($arStatus['running'] === true)
       {
-      $pid = $arStatus['pid'];
       if(!$bQuite)
-        CliWarning("Killing long-running process pid = {$pid}...");
-      if(IsWindowsOS())
-        $strResult = exec("taskkill /F /T /PID $pid");
-      else
-        $strResult = exec("kill -9 $pid");
-      $strResult = trim($strResult);
-      if(strlen($strResult) && !$bQuite)
-        CliWarning($strResult);
+        CliError("Process {$pid} failed to stop normally.");
+      $iResult = sdKillProcess($process, $bQuite);
       }
-    $iResult = proc_close($process);
+    else
+      $iResult = proc_close($process);
     }
   catch(\Throwable $throwable)
     {
@@ -234,4 +221,71 @@ function sdWaitOnProcessStop($process, float $fWaitSeconds, bool $bQuite = false
     }
 
   return $arStatus;
+}
+//-------------------------------------------------------------------------------------------------
+function sdKillProcess($process, array &$pipes, bool $bQuite = false) : int
+{
+  $iResult = -1;
+  try
+    {
+    $arStatus = proc_get_status($process);
+    $pid = is_numeric($arStatus['pid']) ? $arStatus['pid'] : null;
+    sdCloseProcessPipes($pipes, $bQuite);
+
+    // A suggested work-around, posted by "v dot denegin at yahoo dot com"
+    // on the php.net manual page for proc_terminate()
+    if(is_numeric($pid))
+      {
+      if(!$bQuite)
+        CliWarning("Killing process pid = {$pid}...");
+      if(IsWindowsOS())
+        $strResult = exec("taskkill /F /T /PID $pid");
+      else
+        $strResult = exec("kill -9 $pid");
+      $strResult = trim($strResult);
+      if(strlen($strResult) && !$bQuite)
+        CliWarning($strResult);
+      }
+    else if(!$bQuite)
+      CliError("Unable to kill process with no PID");
+
+    $arStatus = proc_get_status($process);
+    if(is_array($arStatus) && $arStatus['running'] === false)
+      $iResult = proc_close($process);
+    }
+  catch(\Throwable $throwable)
+    {
+    if(!$bQuite)
+      CliError($throwable->getMessage());
+    $iResult = -1;
+    }
+  return $iResult;
+
+}
+//-------------------------------------------------------------------------------------------------
+function sdCloseProcessPipes(array &$pipes, bool $bQuite = false)
+{
+  try
+    {
+    $i = 0;
+    foreach($pipes as $pipe)
+      {
+      if(is_resource($pipe))
+        {
+        if(fclose($pipe))
+          {
+          $pipes[$i] = null;
+          }
+        else if(!$bQuite)
+          CliWarning("Failed to close process pipe " . $i);
+        }
+      $i++;
+      }
+    }
+  catch(Throwable $throwable)
+    {
+    if(!$bQuite)
+      CliError($throwable->getMessage());
+    }
+
 }

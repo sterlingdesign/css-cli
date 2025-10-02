@@ -2,33 +2,18 @@
 declare(strict_types=1);
 namespace Sterling\StackTools;
 
-use parallel\Channel;
-use parallel\Events;
-use parallel\Events\Event\Type;
-use parallel\Future;
-use parallel\Runtime;
-
-class UserCommandTask extends SimpleParallelThread
+class UserCommandTask extends ThreadWithUnbufferedChannel
 {
-  //-----------------------------------------------------------------------------------------------
-  public static function PrintMenu()
-  {
-    echo "Type 'q' or 'quit' and press Enter to quit " . PHP_EOL;
-  }
   //-----------------------------------------------------------------------------------------------
   protected function getEntryClosure(): \Closure
   {
-    return \Closure::fromCallable('static::_entry');
+    return \Closure::fromCallable([UserCommandTask::class, '_entry']);
+    //return \Sterling\StackTools\UserCommandTask::_entry(...);
   }
   //-----------------------------------------------------------------------------------------------
   protected function getRuntimeBootstrap(): ?string
   {
     return BOOTSTRAP_AUTOLOAD_PHP;
-  }
-  //-----------------------------------------------------------------------------------------------
-  public function GetFutureName(): string
-  {
-    return "UserCommandTask";
   }
   //-----------------------------------------------------------------------------------------------
   // Notes:
@@ -42,27 +27,27 @@ class UserCommandTask extends SimpleParallelThread
   // for reasons other than user command entry, the user will have to
   // press the enter key before the calling script will fully exit...
   // even calling kill() on the Runtime does not end it.
-  protected static function _entry(Channel $channel)
+  protected static function _entry(\parallel\Channel $channel): int
   {
     CliInfo("User Command task is starting...");
     $hStdin = fopen("php://stdin", "r");
-    $bContinue = true;
-    $oEvents = new Events();
+    // we need to catch the event when the channel is closed
+    $oEvents = new \parallel\Events();
     $oEvents->setBlocking(false);
     $oEvents->addChannel($channel);
 
     try
       {
-       while($bContinue && is_resource($hStdin))
+       while(is_resource($hStdin) && self::_test_continue($oEvents, $channel))
         {
-        UserCommandTask::PrintMenu();
-        $cmd = trim(fgets($hStdin));
-        $bContinue = self::_test_continue($oEvents, $channel);
-        if($bContinue && strlen($cmd))
+        // fgets blocks until it returns
+        $cmd = trim(strval(fgets($hStdin)));
+        if(self::_test_continue($oEvents, $channel))
           {
+          // The channel should be a Blocking channel
           $channel->send($cmd);
-          usleep(100000);
-          $bContinue = self::_test_continue($oEvents, $channel);
+          // wait for the master threat to tell me to go or stop
+          if("go" !== $channel->recv()) break;
           }
         }
       }
@@ -74,18 +59,5 @@ class UserCommandTask extends SimpleParallelThread
     if(is_resource($hStdin))
       fclose($hStdin);
     return 0;
-  }
-  //-----------------------------------------------------------------------------------------------
-  protected static function _test_continue(Events $oEvents, Channel $channel) : bool
-  {
-    $bContinue = true;
-    if($oEvent = $oEvents->poll())
-      {
-      if($oEvent->type == Type::Close)
-        $bContinue = false;
-      else
-        $oEvents->addChannel($channel);
-      }
-    return $bContinue;
   }
 }

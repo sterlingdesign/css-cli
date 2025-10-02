@@ -191,7 +191,8 @@ public function GetAllDirectoryPairs() : array
 public function GetModifiedFiles() : array
 {
   $arMod = array();
-
+  // WOW, file times are cached??
+  clearstatcache();
   for($i = 0; $i < count($this->m_arDirectoryPairs); $i++)
     {
     $arFiles = $this->scanInputForExpectedOutput($this->m_arDirectoryPairs[$i]['input'], '');
@@ -240,6 +241,7 @@ public function GetModifiedFiles() : array
 //-------------------------------------------------------------------------------------------------
 public function UpdateTimestamps(array $arFiles)
 {
+  clearstatcache();
   foreach($arFiles as $strFullPath)
     {
     if(!file_exists($strFullPath)) continue;
@@ -267,6 +269,7 @@ public function UpdateTimestamps(array $arFiles)
 //-------------------------------------------------------------------------------------------------
 public function InitializeOutputStats()
 {
+
   // for each sass directory, get a list of expected output files
   for($i = 0; $i < count($this->m_arDirectoryPairs); $i++)
     {
@@ -318,6 +321,36 @@ public function InitializeOutputStats()
       }
 
     return $arExpected;
+  }
+//-------------------------------------------------------------------------------------------------
+  static function buildDirectories(mixed $arOperands, mixed $arStackDirs) : SassDirectories
+  {
+    $oSassDirs = new SassDirectories();
+    // the AddDirectories method displays errors as they occur and returns false
+    // if a command line directory doesn't exist, we will consider that a fatal error
+
+    if(is_array($arOperands) && count($arOperands) > 0)
+      {
+      CliInfo("Adding " . count($arOperands) . " standalone (non-stack) directories");
+      if(!$oSassDirs->AddDirectories($arOperands))
+        CliWarning("Some of the specified standalone (non-stack) directories could not be added.");
+      }
+    else
+      {
+      CliInfo("No Standalone (non-stack) Directories Specified");
+      }
+
+    if(is_array($arStackDirs) && count($arStackDirs) > 0)
+      {
+      CliInfo("Adding " . count($arStackDirs) . " Stack Directories");
+      if(0 == $oSassDirs->AddStackDirs($arStackDirs))
+        CliWarning("Stack directories were specified, but no valid sass sub folders were found");
+      }
+    else
+      {
+      CliInfo("No Stack Directories Specified");
+      }
+    return $oSassDirs;
   }
 
 }

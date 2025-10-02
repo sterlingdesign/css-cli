@@ -1,3 +1,7 @@
 composer.lock
 src/nodejs/cssfixerupper/node_modules/*
 .idea/*
+php.error.log
+testoutcss/*.css
+testoutcss/*.map
+

@@ -5,7 +5,7 @@ namespace Sterling\StackTools;
 use parallel\{Channel, Events, Events\Event\Type, Future, Runtime};
 use SevenEcks\Ansi\Colorize;
 
-class PostSassProcessor extends SimpleParallelThread
+class PostSassProcessor extends ThreadWithUnbufferedChannel
 {
   // Older versions of Windows had a 8191 character limit for command line strings.
   //  Here, a few characters were subtracted from that to account for the shell command and
@@ -13,11 +13,6 @@ class PostSassProcessor extends SimpleParallelThread
   //  but we might as well be prepared in case we are running on a version of windows that has
   //  the old limit.  See PostSassProcessor::ProcessAllFiles()
   const MAX_ARG = 8100;
-
-  /** @var null|\Sterling\StackTools\SassDirectories */
-  protected $m_oSassDirs = null;
-  protected $m_bPrettyPrint = false;
-  protected $m_bUseMaps = false;
 
 //-------------------------------------------------------------------------------------------------
 protected function getRuntimeBootstrap(): ?string
@@ -27,30 +22,13 @@ protected function getRuntimeBootstrap(): ?string
 //-------------------------------------------------------------------------------------------------
 protected function getEntryClosure(): \Closure
 {
-  return \Closure::fromCallable('static::_monitor');
+  return \Closure::fromCallable([PostSassProcessor::class, '_monitor']);
 }
 //-------------------------------------------------------------------------------------------------
-  public function GetFutureName(): string
-  {
-    return "PostSassProcessor";
-  }
-//-------------------------------------------------------------------------------------------------
-public function __construct(SassDirectories $oSassDirs, bool $bPrettyPrint, bool $bUseMaps)
-{
-  $this->m_oSassDirs = $oSassDirs;
-  $this->m_bPrettyPrint = $bPrettyPrint;
-  $this->m_bUseMaps = $bUseMaps;
-}
-//-------------------------------------------------------------------------------------------------
-public function GetDartSassDiretoryList() : string
-{
-  return $this->m_oSassDirs->GetDartSassDiretoryList();
-}
-//-------------------------------------------------------------------------------------------------
-public function ProcessAllFiles() : bool
+public static function ProcessAllFiles(SassDirectories $oSassDirs, bool $bPrettyPrint, bool $bUseMaps) : bool
 {
   $bOk = true;
-  $arAllExpectedOutput = $this->m_oSassDirs->getAllExpectedOutputFiles();
+  $arAllExpectedOutput = $oSassDirs->getAllExpectedOutputFiles();
   // for each expected output file, if it exists, run the css-tool on that file
   CliInfo("Processing all " . count($arAllExpectedOutput) . " sass generated files...");
   $filelist = "";
@@ -60,7 +38,7 @@ public function ProcessAllFiles() : bool
       {
       if(strlen($filelist) + strlen($css) >= self::MAX_ARG)
         {
-        $bOk = $this->CallCssTool($filelist, $this->m_bPrettyPrint, $this->m_bUseMaps);
+        $bOk = self::CallCssTool($filelist, $bPrettyPrint, $bUseMaps);
         $filelist = "";
         if(!$bOk)
           break;
@@ -71,7 +49,7 @@ public function ProcessAllFiles() : bool
       CliWarning("Expected Output file does not exist: \"{$css}\"");
     }
   if($bOk && strlen($filelist))
-    $bOk = $this->CallCssTool($filelist, $this->m_bPrettyPrint, $this->m_bUseMaps);
+    $bOk = self::CallCssTool($filelist, $bPrettyPrint, $bUseMaps);
   return $bOk;
 }
 //-------------------------------------------------------------------------------------------------
@@ -140,12 +118,6 @@ static public function CallCssTool(string $filelist, bool $bPrettyPrint, bool $b
   return $bResult;
 }
 //-------------------------------------------------------------------------------------------------
-public function Start(array $arIGNORED = array()) : Future
-{
-  $arArgs = [$this->m_oSassDirs->GetAllDirectoryPairs(), $this->m_bPrettyPrint, $this->m_bUseMaps];
-  return parent::Start($arArgs);
-}
-//-------------------------------------------------------------------------------------------------
 private static function _monitor(Channel  $channel, array $arSassDirectoryPairs, bool $bPrettyPrint, bool $bUseMaps)
 {
   CliInfo("Post Sass Process Monitor is starting...");
@@ -177,13 +149,18 @@ private static function _monitor(Channel  $channel, array $arSassDirectoryPairs,
         break;
 
       $arList = $oSassDirectories->GetModifiedFiles();
+      //if(count($arList))
+        //CliWarning("FOUND " . count($arList) . " Modified Files");
       $arToProcess = [];
       foreach($arList as $arFileModInfo)
         {
         if($arFileModInfo['modification'] == 'created' || $arFileModInfo['modification'] == 'changed')
           {
-          if(file_exists($arFileModInfo['full-path']))
-            array_push($arToProcess, $arFileModInfo['full-path']);
+          if(file_exists($arFileModInfo['full-path']) && !array_search($arFileModInfo['full-path'], $arToProcess))
+            {
+            //CliWarning("ADDING " . $arFileModInfo['modification'] . " FILE: " . $arFileModInfo['full-path']);
+            $arToProcess[] = $arFileModInfo['full-path'];
+            }
           }
         }
       // test to see if we should shut down
@@ -196,7 +173,10 @@ private static function _monitor(Channel  $channel, array $arSassDirectoryPairs,
         if($bContinue && ($event = $events->poll()))
           break;
         else if($bContinue)
+          {
+          //$oSassDirectories->InitializeOutputStats();
           $oSassDirectories->UpdateTimestamps($arToProcess);
+          }
         }
       }
     }

@@ -2,7 +2,9 @@
 declare(strict_types=1);
 namespace Sterling\StackTools;
 
-class SassWatcherOptions extends \GetOpt\GetOpt
+use GetOpt\GetOpt;
+
+class SassWatcherOptions extends GetOpt
 {
 //-------------------------------------------------------------------------------------------------
 public function __construct()
@@ -26,22 +28,25 @@ public function __construct()
     $optRerun->setDefaultValue(false);
     */
 
-    $optPretty = new \GetOpt\Option('p', 'pretty-print', \GetOpt\GetOpt::NO_ARGUMENT);
+    $optPretty = new \GetOpt\Option('p', 'pretty-print', GetOpt::NO_ARGUMENT);
     $optPretty->setDescription('Run the css post sass tool with the pretty-print flag set');
 
-    $optKeepMaps = new \GetOpt\Option('m', 'keepmaps', \GetOpt\GetOpt::NO_ARGUMENT);
+    $optKeepMaps = new \GetOpt\Option('m', 'keepmaps', GetOpt::NO_ARGUMENT);
     $optKeepMaps->setDescription('Instruct dart to generate mapps and the post-dart processor to keep them');
 
     $optWatch = new \GetOpt\Option('w', 'watch');
     $optWatch->setDescription('Monitor the sass output files and run css tools when modified');
 
-    $optStackDir = new \GetOpt\Option('s', 'sterling-stack', \GetOpt\GetOpt::MULTIPLE_ARGUMENT);
+    $optImmediate = new \GetOpt\Option('i', 'immediate');
+    $optImmediate->setDescription('Run SASS and PostProcessors immediately on startup.  All detected files will be updated.');
+
+    $optStackDir = new \GetOpt\Option('s', 'sterling-stack', GetOpt::MULTIPLE_ARGUMENT);
     $optStackDir->setDescription('A directory that is the root directory of a sterling stack.  Sass source and output folders will be automatically detected');
     $oStackDirArg = new \GetOpt\Argument('', function($value){return is_dir($value);});
     $optStackDir->setArgument($oStackDirArg);
 
     //$getopt = new \GetOpt\GetOpt([$optVersion, $optHelp, $optRerun, $optPretty, $optWatch, $optStackDir]);
-    $this->addOptions([$optVersion, $optHelp, $optGen, $optPretty, $optKeepMaps, $optWatch, $optStackDir]);
+    $this->addOptions([$optVersion, $optHelp, $optGen, $optPretty, $optKeepMaps, $optImmediate, $optWatch, $optStackDir]);
 
     // TESTING
     //var_dump($this->getOption('ConfigFile'));
@@ -79,7 +84,7 @@ public function processArgv() : bool
     if(file_exists($strPackageJsonFile))
       {
       $oPkg = json_decode(file_get_contents($strPackageJsonFile));
-      if($oPkg->version)
+      if(property_exists($oPkg, "version"))
         $strVersion = strval($oPkg->version);
       else
         $strVersion = "no version found in " . $strPackageJsonFile;
