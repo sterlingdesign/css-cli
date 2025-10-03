@@ -2,7 +2,7 @@
 
 This is a Command line interface (CLI) for automating the process of creating CSS from Sass (SCSS) source files.  It is specifically meant for use with a Sterling Full Stack Framework directory structure, however it could be used to accomodate any directory structure using additional command line arguments.  The command line arguments specify the SCSS source directory to monitor and the output directory where generated css and map files are generated (just like arguments to sass - sourceDir:targetDir).
 
-This CLI combines the capabilites of sass (https://sass-lang.com), the "autoprefixer" library (https://www.npmjs.com/package/autoprefixer), and the "css-clean" library (https://www.npmjs.com/package/clean-css).  It furthermore provides a command shell-like interface that can be used to monitor activity and control output in real time.
+This CLI combines the capabilites of sass (https://sass-lang.com), the "autoprefixer" library (https://www.npmjs.com/package/autoprefixer), and the "clean-css" library (https://www.npmjs.com/package/clean-css).  It furthermore provides a command shell-like interface that can be used to monitor activity and control output in real time.
 
 ### Background
 
